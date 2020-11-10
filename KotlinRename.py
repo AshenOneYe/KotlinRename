@@ -81,10 +81,45 @@ class JEB2AutoRename(Runnable):
                 
                 if len(address.split("/")) == len(fullName.split("/")):
                     self.deal_one_class(unit,fullName,interfaces[0].getImplementingClass())
-                    
-        if count == 2:
-            print(superTypes)
-            print(interfaces)
+
+        if count > 1:
+            total = superTypes + interfaces
+            stringList = map(lambda s:str(unit.getString(s.getStringIndex())),list(dv2)[1:len(total)])
+
+            for s in stringList:
+                if len(s.split("/")) == 1:
+                    return
+
+            if total[0].getAddress() == "Ljava/lang/Object;":
+                total = total[1:len(total)]
+            if len(total) != len(stringList):
+                return
+
+            toDeal = None
+            matchedString = []
+            for clz in total:
+                address = clz.getAddress()
+                isMatch = False
+                for fullName in stringList:
+                    if(fullName == address):
+                        isMatch = True
+                        matchedString.append(fullName)
+                        break
+    
+                if isMatch:
+                    continue
+                if toDeal:
+                    return
+                toDeal = clz
+
+            for s in matchedString:
+                stringList.remove(s)
+            if len(stringList) != 1:
+                return
+
+            print(toDeal.getAddress())
+            print("rename : " + stringList[0])
+            self.deal_one_class(unit,stringList[0],toDeal.getImplementingClass())
 
     def deal_one_class(self,unit,fullName,clazz):
         if clazz.isRenamed():
