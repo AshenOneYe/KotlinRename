@@ -27,39 +27,88 @@ class JEB2AutoRename(Runnable):
             return
 
         prj = projects[0]
-
         units = RuntimeProjectUtil.findUnitsByType(prj, IDexUnit, False)
 
         for unit in units:
             classes = unit.getClasses()
             for clazz in classes:
-                
+
                 #find all dv2 of Kotlin Metadata
                 dv2 = self.find_metadata_annotation(clazz)
 
                 if not dv2:
                     continue
+
                 fullName = str(unit.getString(dv2[0].getStringIndex()))
-                if fullName.find("/") == -1:
-                    continue
-                li = fullName.split("/")
-                li.reverse()
 
-                name = li[0]
-                if name.find(";") != -1:
-                    name = name[0:len(name)-1]
+                self.deal_one_class(unit,fullName,clazz)
+                self.rename_superclasses_and_interfaces(unit,clazz,dv2)
+
+    def rename_superclasses_and_interfaces(self,unit,clazz,dv2):
+        superTypes = clazz.getSupertypes()
+        interfaces = clazz.getImplementedInterfaces()
+        count = len(superTypes) + len(interfaces)
+        address = superTypes[0].getAddress()
+        noSuperClass = False
+        if address == "Ljava/lang/Object;":
+            count -= 1
+            noSuperClass = True
+        
+        if count == 1:
+            if not noSuperClass:
+                if superTypes[0].isRenamed():
+                    return
+                address = superTypes[0].getAddress()
+                if address.startswith("Ljava"):
+                    return
                 
-                package = clazz.getPackage()
+                fullName = str(unit.getString(dv2[1].getStringIndex()))
+                if address == fullName:
+                    return
+                
+                if len(address.split("/")) == len(fullName.split("/")):
+                    self.deal_one_class(unit,fullName,superTypes[0].getImplementingClass())
+            else:
+                if interfaces[0].isRenamed():
+                    return
+                address = interfaces[0].getAddress()
+                if address.startswith("Ljava"):
+                    return
+                
+                fullName = str(unit.getString(dv2[1].getStringIndex()))
+                if address == fullName:
+                    return
+                
+                if len(address.split("/")) == len(fullName.split("/")):
+                    self.deal_one_class(unit,fullName,interfaces[0].getImplementingClass())
+                    
+        if count == 2:
+            print(superTypes)
+            print(interfaces)
 
-                for i in range(1,len(li)):
-                    newName = li[i]
-                    if (i == len(li)-1) & (newName[0] == 'L'):
-                        newName = newName[1:len(newName)]
-                    self.rename_package(unit, package, newName)
-                    package = package.getParentPackage()
+    def deal_one_class(self,unit,fullName,clazz):
+        if clazz.isRenamed():
+            return
+        if fullName.find("/") == -1:
+            return
+        li = fullName.split("/")
+        li.reverse()
 
-                #self.comment_class(unit, clazz, clazz.getName(True))  # Backup origin clazz name to comment
-                self.rename_class(unit, clazz, name, True)  # Rename to source name
+        name = li[0]
+        if name.find(";") != -1:
+            name = name[0:len(name)-1]
+        
+        package = clazz.getPackage()
+
+        for i in range(1,len(li)):
+            newName = li[i]
+            if (i == len(li)-1) & (newName[0] == 'L'):
+                newName = newName[1:len(newName)]
+            self.rename_package(unit, package, newName)
+            package = package.getParentPackage()
+
+        self.rename_class(unit, clazz, name, True)  # Rename to source name
+
 
     def find_metadata_annotation(self,clazz):
         annotationsDirectory = clazz.getAnnotationsDirectory()
@@ -80,6 +129,8 @@ class JEB2AutoRename(Runnable):
             return dv2
         return None
 
+
+
     def comment_class(self, unit, originClazz, commentStr):
         actCtx = ActionContext(unit, Actions.COMMENT, originClazz.getItemId(), originClazz.getAddress())
         actData = ActionCommentData()
@@ -95,7 +146,11 @@ class JEB2AutoRename(Runnable):
             except Exception, e:
                 print (Exception, e)
 
+
+
     def rename_class(self, unit, originClazz, sourceName, isBackup):
+        if originClazz.isRenamed():
+            return
         actCtx = ActionContext(unit, Actions.RENAME, originClazz.getItemId(), originClazz.getAddress())
         actData = ActionRenameData()
         actData.setNewName(sourceName)
@@ -104,11 +159,14 @@ class JEB2AutoRename(Runnable):
             try:
                 result = unit.executeAction(actCtx, actData)
                 if result:
-                    print('class rename to %s success!' % sourceName)
+                    pass
+                    #print('class rename to %s success!' % sourceName)
                 else:
                     print('class rename to %s failed!' % sourceName)
             except Exception, e:
                 print (Exception, e)
+
+
 
     def rename_package(self, unit, package, sourceName):
         actCtx = ActionContext(unit, Actions.RENAME, package.getItemId(), package.getAddress())
@@ -119,7 +177,8 @@ class JEB2AutoRename(Runnable):
             try:
                 result = unit.executeAction(actCtx, actData)
                 if result:
-                    print('package rename to %s success!' % sourceName)
+                    pass
+                    #print('package rename to %s success!' % sourceName)
                 else:
                     print('package rename to %s failed!' % sourceName)
             except Exception, e:
