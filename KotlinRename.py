@@ -11,6 +11,10 @@ class KotlinRename(IScript):
         print('Done')
 
 class JEB2AutoRename(Runnable):
+
+    renamedClasses = 0
+    renamedPackages = 0
+
     def __init__(self, ctx):
         self.ctx = ctx
 
@@ -32,10 +36,9 @@ class JEB2AutoRename(Runnable):
         for unit in units:
             classes = unit.getClasses()
             for clazz in classes:
-
                 #find all dv2 of Kotlin Metadata
                 dv2 = self.find_metadata_annotation(clazz)
-
+                
                 if not dv2:
                     continue
 
@@ -43,6 +46,8 @@ class JEB2AutoRename(Runnable):
 
                 self.deal_one_class(unit,fullName,clazz)
                 self.rename_superclasses_and_interfaces(unit,clazz,dv2)
+        print("Classes renamed count : " + str(self.renamedClasses))
+        print("Packages renamed count : " + str(self.renamedPackages))
 
     def rename_superclasses_and_interfaces(self,unit,clazz,dv2):
         superTypes = clazz.getSupertypes()
@@ -158,7 +163,7 @@ class JEB2AutoRename(Runnable):
             elements = annotation.getElements()
             if len(elements) != 5:
                 continue
-            if elements[0].getValue().getType() != 28 | elements[1].getValue().getType() != 28 | elements[2].getValue().getType() != 28 | elements[3].getValue().getType() != 4 | elements[4].getValue().getType() != 28:
+            if elements[0].getValue().getType() != 28 or elements[1].getValue().getType() != 28 or elements[2].getValue().getType() != 28 or elements[3].getValue().getType() != 4 or elements[4].getValue().getType() != 28:
                 continue
             dv2 = elements[2].getValue().getArray()
             return dv2
@@ -194,8 +199,7 @@ class JEB2AutoRename(Runnable):
             try:
                 result = unit.executeAction(actCtx, actData)
                 if result:
-                    pass
-                    #print('class rename to %s success!' % sourceName)
+                    self.renamedClasses += 1
                 else:
                     print('class rename to %s failed!' % sourceName)
             except Exception, e:
@@ -212,8 +216,7 @@ class JEB2AutoRename(Runnable):
             try:
                 result = unit.executeAction(actCtx, actData)
                 if result:
-                    pass
-                    #print('package rename to %s success!' % sourceName)
+                    self.renamedPackages += 1
                 else:
                     print('package rename to %s failed!' % sourceName)
             except Exception, e:
