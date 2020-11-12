@@ -122,8 +122,6 @@ class JEB2AutoRename(Runnable):
             if len(stringList) != 1:
                 return
 
-            print(toDeal.getAddress())
-            print("rename : " + stringList[0])
             self.deal_one_class(unit,stringList[0],toDeal.getImplementingClass())
 
     def deal_one_class(self,unit,fullName,clazz):
@@ -189,7 +187,7 @@ class JEB2AutoRename(Runnable):
 
 
     def rename_class(self, unit, originClazz, sourceName, isBackup):
-        if originClazz.isRenamed():
+        if originClazz.isRenamed() or originClazz.getName() == sourceName:
             return
         actCtx = ActionContext(unit, Actions.RENAME, originClazz.getItemId(), originClazz.getAddress())
         actData = ActionRenameData()
@@ -208,6 +206,9 @@ class JEB2AutoRename(Runnable):
 
 
     def rename_package(self, unit, package, sourceName):
+        if package.getName() == sourceName:
+            return
+
         actCtx = ActionContext(unit, Actions.RENAME, package.getItemId(), package.getAddress())
         actData = ActionRenameData()
         actData.setNewName(sourceName)
